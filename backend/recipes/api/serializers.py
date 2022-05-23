@@ -21,6 +21,9 @@ class Base64ImageField(serializers.ImageField):
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
+    is_subscribed = serializers.SerializerMethodField(
+        method_name='subscription'
+    )
 
     def subscription(self, instance):
         try:
@@ -33,10 +36,6 @@ class UserSerializer(serializers.ModelSerializer):
                 user=user, following=author).exists()
         except Exception:
             return False
-
-    is_subscribed = serializers.SerializerMethodField(
-        method_name='subscription'
-    )
 
     class Meta:
         model = User
@@ -85,6 +84,15 @@ class TagSerializer(serializers.ModelSerializer):
 
 
 class WriteRecipeSerializer(serializers.ModelSerializer):
+    ingredients = IngredientsSerializer(
+        many=True, read_only=True, source='recipeingredient_set')
+    author = AuthorSerializer(read_only=True)
+    is_favorited = serializers.SerializerMethodField(
+        method_name='is_in_favourites', read_only=True)
+    is_in_shopping_cart = serializers.SerializerMethodField(
+        method_name='is_in_cart', read_only=True)
+    image = Base64ImageField(max_length=None)
+
     def is_in_favourites(self, instance):
         user_id = self.context['request'].user.id
         recipe_id = instance.id
@@ -102,15 +110,6 @@ class WriteRecipeSerializer(serializers.ModelSerializer):
                 user=user_id, recipe=recipe_id).exists()
         except Exception:
             return False
-
-    ingredients = IngredientsSerializer(
-        many=True, read_only=True, source='recipeingredient_set')
-    author = AuthorSerializer(read_only=True)
-    is_favorited = serializers.SerializerMethodField(
-        method_name='is_in_favourites', read_only=True)
-    is_in_shopping_cart = serializers.SerializerMethodField(
-        method_name='is_in_cart', read_only=True)
-    image = Base64ImageField(max_length=None)
 
     class Meta:
         model = Recipe
@@ -171,19 +170,6 @@ class CartSerializer(serializers.ModelSerializer):
 
 
 class FollowSerializer(serializers.ModelSerializer):
-    def subscription(self, instance):
-        user_id = instance.user.id
-        author_id = instance.following.id
-        try:
-            return Follow.objects.filter(
-                user=user_id, following=author_id).exists()
-        except Exception:
-            return False
-
-    def count(self, instance):
-        author = instance.following
-        return author.recipes.count()
-
     email = serializers.ReadOnlyField(source='following.email')
     id = serializers.ReadOnlyField(source='following.id')
     username = serializers.ReadOnlyField(source='following.username')
@@ -195,9 +181,19 @@ class FollowSerializer(serializers.ModelSerializer):
     recipes = CartSerializer(
         many=True, read_only=True, source='following.recipes'
     )
-    recipe_count = serializers.SerializerMethodField(
-       method_name='count'
+    recipe_count = serializers.IntegerField(
+       source='following.recipes.count()',
+       read_only=True
     )
+
+    def subscription(self, instance):
+        user_id = instance.user.id
+        author_id = instance.following.id
+        try:
+            return Follow.objects.filter(
+                user=user_id, following=author_id).exists()
+        except Exception:
+            return False
 
     class Meta:
         model = Follow

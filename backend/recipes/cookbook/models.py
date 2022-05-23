@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.core.validators import MinValueValidator
 
 
 class User(AbstractUser):
@@ -39,18 +40,19 @@ class Recipe(models.Model):
     ingredients = models.ManyToManyField(
         Ingredient, through='RecipeIngredient')
     text = models.TextField()
-    cooking_time = models.IntegerField()
+    cooking_time = models.IntegerField(
+        validators=[MinValueValidator(1), ])
     favorited_by = models.ManyToManyField(
         User, through='Favourite', related_name='favorites')
     in_cart_of = models.ManyToManyField(
         User, through='Cart', related_name='shopping')
     pub_date = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return f'{self.name}'
-
     class Meta:
         ordering = ('-pub_date',)
+
+    def __str__(self):
+        return f'{self.name}'
 
 
 class Follow(models.Model):
@@ -65,15 +67,19 @@ class Follow(models.Model):
         related_name='following'
     )
 
-    def __str__(self):
-        return f'{self.user} is following {self.following}'
-
     class Meta:
         constraints = (
             models.UniqueConstraint(
                 fields=['user', 'following'],
                 name='unique_following'),
+            models.CheckConstraint(
+                check=~models.Q(user=models.F('following')),
+                name='no_self_follow'
+            )
         )
+
+    def __str__(self):
+        return f'{self.user} is following {self.following}'
 
 
 class Favourite(models.Model):
@@ -88,15 +94,15 @@ class Favourite(models.Model):
         on_delete=models.CASCADE
     )
 
-    def __str__(self):
-        return f'{self.user} has added {self.recipe} into favorites'
-
     class Meta:
         constraints = (
             models.UniqueConstraint(
                 fields=['user', 'recipe'],
                 name='unique_favourites'),
         )
+
+    def __str__(self):
+        return f'{self.user} has added {self.recipe} into favorites'
 
 
 class Cart(models.Model):
@@ -111,15 +117,15 @@ class Cart(models.Model):
         on_delete=models.CASCADE
     )
 
-    def __str__(self):
-        return f'{self.recipe} is in cart of {self.user}'
-
     class Meta:
         constraints = (
             models.UniqueConstraint(
                 fields=['user', 'recipe'],
                 name='unique_shopping'),
         )
+
+    def __str__(self):
+        return f'{self.recipe} is in cart of {self.user}'
 
 
 class RecipeIngredient(models.Model):

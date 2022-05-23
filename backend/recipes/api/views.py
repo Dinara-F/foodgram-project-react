@@ -1,7 +1,6 @@
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
-
 from rest_framework import (
     viewsets, mixins, status, exceptions, filters)
 from rest_framework.views import APIView
@@ -13,7 +12,6 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from cookbook.models import (
     Recipe, User, Tag, Cart, Favourite, Follow, Ingredient,
     RecipeIngredient)
-
 from .filters import RecipeFilter
 from .permissions import AuthorOrReadOnly
 from .paginations import CustomPagination
@@ -65,7 +63,7 @@ class UserViewSet(CreateListRetrieveViewSet):
             url_path='subscriptions',
             permission_classes=(IsAuthenticated,))
     def subscriptions(self, request):
-        follows = Follow.objects.filter(user=request.user)
+        follows = request.user.follower
         serializer = FollowSerializer(follows, many=True)
         return Response(serializer.data)
 
@@ -86,30 +84,31 @@ class RecipeViewSet(viewsets.ModelViewSet):
             url_path='download_shopping_cart')
     def download_shopping_cart(self, request):
         filename = 'test.txt'
-        carts = Cart.objects.filter(user=request.user)
-        dict = {}
-        dict_ing = {}
+        carts = request.user.cart.all()
+        dict_amount = {}
+        dict_unit = {}
         for cart in carts:
             recipe = cart.recipe
             for ingredient in recipe.ingredients.all():
-                dict_ing[ingredient.name] = ingredient.measurement_unit
+                dict_unit[ingredient.name] = ingredient.measurement_unit
                 amount_storage = get_object_or_404(
                     RecipeIngredient, recipe=recipe, ingredient=ingredient)
                 amount = amount_storage.amount
-                existing = dict.get(ingredient.name)
+                existing = dict_amount.get(ingredient.name)
                 if existing:
-                    dict[ingredient.name] = (
+                    dict_amount[ingredient.name] = (
                         int(amount) + int(existing))
                 else:
-                    dict[ingredient.name] = int(amount)
-        str1 = ''
-        for i in range(0, len(dict)):
+                    dict_amount[ingredient.name] = int(amount)
+        str_final = ''
+        for i in range(0, len(dict_amount)):
             new_str = (
-                str(list(dict.keys())[i]) + ' (' +
-                str(dict_ing[list(dict.keys())[i]]) +
-                ') - ' + str(list(dict.values())[i]))
-            str1 = str1 + new_str + '\n'
-        response = HttpResponse(str1, content_type='text/plain; charset=UTF-8')
+                str(list(dict_amount.keys())[i]) + ' (' +
+                str(dict_unit[list(dict_amount.keys())[i]]) +
+                ') - ' + str(list(dict_amount.values())[i]))
+            str_final = str_final + new_str + '\n'
+        response = HttpResponse(
+            str_final, content_type='text/plain; charset=UTF-8')
         response['Content-Disposition'] = (
             'attachment; filename={0}'.format(filename))
         return response
@@ -136,6 +135,7 @@ class CartView(APIView):
             try:
                 Favourite.objects.create(recipe=recipe, user=user)
             except Exception:
+                response = {'errors': 'Этот объект уже добавлен'}
                 return Response(response, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response(status=status.HTTP_400_BAD_REQUEST)
@@ -145,9 +145,9 @@ class CartView(APIView):
     def delete(self, request, *args, **kwargs):
         action = self.kwargs.get('action')
         if action == 'shopping_cart':
-            object = Cart.objects.filter(user=request.user)
+            object = request.user.cart.all()
         elif action == 'favorite':
-            object = Favourite.objects.filter(user=request.user)
+            object = request.user.favourite.all()
         else:
             return Response(status=status.HTTP_400_BAD_REQUEST)
         recipe_id = self.kwargs.get('pk')
@@ -164,13 +164,13 @@ class FollowView(APIView):
         try:
             follow = Follow.objects.create(user=user, following=following)
         except Exception:
-            response = {'errors': 'Нельзя подписаться на себя'}
+            response = {'errors': 'Подписка невозможна!'}
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
         serializer = FollowSerializer(follow)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def delete(self, request, *args, **kwargs):
-        objects = Follow.objects.filter(user=request.user)
+        objects = request.user.follower.all()
         following_id = self.kwargs.get('pk')
         following = get_object_or_404(User, id=following_id)
         objects.filter(following=following).delete()
