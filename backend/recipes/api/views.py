@@ -18,7 +18,7 @@ from .paginations import CustomPagination
 from .serializers import (
     UserSerializer, PasswordSerializer, GetTokenSerializer,
     TagSerializer, WriteRecipeSerializer, CartSerializer,
-    FollowSerializer, IngredientSerializer)
+    FollowSerializer, IngredientSerializer, ReadRecipeSerializer)
 
 
 class CreateListRetrieveViewSet(mixins.CreateModelMixin, mixins.ListModelMixin,
@@ -56,25 +56,36 @@ class UserViewSet(CreateListRetrieveViewSet):
             raise exceptions.ValidationError(msg)
         user.password = new_password
         user.save(update_fields=['password'])
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False,
             methods=['GET', ],
             url_path='subscriptions',
             permission_classes=(IsAuthenticated,))
     def subscriptions(self, request):
-        follows = request.user.follower
-        serializer = FollowSerializer(follows, many=True)
+        follows = request.user.follower.all()
+        page = self.paginate_queryset(follows)
+        if page is not None:
+            serializer = FollowSerializer(
+                page, many=True, context=self.get_serializer_context())
+            return self.get_paginated_response(serializer.data)
+        serializer = FollowSerializer(
+            follows, many=True, context=self.get_serializer_context())
         return Response(serializer.data)
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
-    serializer_class = WriteRecipeSerializer
+    # serializer_class = WriteRecipeSerializer
     permission_classes = (AuthorOrReadOnly,)
     pagination_class = CustomPagination
     filter_backends = (DjangoFilterBackend,)
     filter_class = RecipeFilter
+
+    def get_serializer_class(self):
+        if self.request.method in ['GET']:
+            return ReadRecipeSerializer
+        return WriteRecipeSerializer
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -117,6 +128,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
+    pagination_class = None
 
 
 class CartView(APIView):
@@ -182,12 +194,13 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = IngredientSerializer
     filter_backends = (filters.SearchFilter,)
     search_fields = ('^name',)
+    pagination_class = None
 
 
 def get_tokens_for_user(user):
     token = Token.objects.create(user=user)
     return {
-        'token': str(token.key),
+        'auth_token': str(token.key),
     }
 
 
@@ -199,7 +212,7 @@ def get_token(request):
     user = get_object_or_404(User, email=request.data.get('email'))
     if user.password == request.data.get('password'):
         return Response(
-            get_tokens_for_user(user), status=status.HTTP_200_OK
+            get_tokens_for_user(user), status=status.HTTP_201_CREATED
         )
     return Response(status=status.HTTP_400_BAD_REQUEST)
 
@@ -209,5 +222,4 @@ def get_token(request):
 def delete_token(request):
     user = request.user
     user.auth_token.delete()
-    return Response({"success": ("Successfully logged out.")},
-                    status=status.HTTP_200_OK)
+    return Response(status=status.HTTP_204_NO_CONTENT)

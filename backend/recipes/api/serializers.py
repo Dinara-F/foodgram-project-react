@@ -162,6 +162,17 @@ class WriteRecipeSerializer(serializers.ModelSerializer):
         return recipe
 
 
+class ReadRecipeSerializer(WriteRecipeSerializer):
+    author = UserSerializer(read_only=True)
+    tags = TagSerializer(read_only=True, many=True)
+
+    class Meta:
+        model = Recipe
+        fields = [
+            'id', 'tags', 'author', 'ingredients', 'is_favorited',
+            'is_in_shopping_cart', 'name', 'image', 'text', 'cooking_time']
+
+
 class CartSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -178,13 +189,21 @@ class FollowSerializer(serializers.ModelSerializer):
     is_subscribed = serializers.SerializerMethodField(
         method_name='subscription'
     )
-    recipes = CartSerializer(
-        many=True, read_only=True, source='following.recipes'
+    recipes = serializers.SerializerMethodField(
+        method_name='get_recipes'
     )
     recipe_count = serializers.IntegerField(
        source='following.recipes.count()',
        read_only=True
     )
+
+    def get_recipes(self, instance):
+        author = instance.following
+        recipes = author.recipes.all()
+        limit = self.context['request'].query_params.get('recipes_limit')
+        if limit:
+            recipes = author.recipes.all()[:int(limit)]
+        return CartSerializer(recipes, many=True).data
 
     def subscription(self, instance):
         user_id = instance.user.id

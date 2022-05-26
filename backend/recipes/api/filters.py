@@ -1,13 +1,19 @@
-from django_filters import FilterSet, NumberFilter, AllValuesFilter
+from django_filters import (FilterSet, NumberFilter,
+                            ModelMultipleChoiceFilter)
 
-from cookbook.models import Recipe
+from cookbook.models import Recipe, Tag
 
 
 class RecipeFilter(FilterSet):
     is_favorited = NumberFilter(method='filter_favorited')
     is_in_shopping_cart = NumberFilter(method='filter_cart')
     author = NumberFilter(field_name='author__id')
-    tags = AllValuesFilter(field_name='tags__slug')
+    tags = ModelMultipleChoiceFilter(
+        field_name='tags__slug',
+        to_field_name='slug',
+        # lookup_expr='in',
+        queryset=Tag.objects.all()
+    )
 
     def filter_favorited(self, queryset, name, value):
         if value == 1:
