@@ -58,7 +58,7 @@ jobs:
           sudo docker pull dinarushko/infra_backend
           sudo docker pull dinarushko/infra_frontend
           sudo docker-compose stop
-          sudo docker-compose rm -f web
+          sudo docker-compose rm -f infra_backend
           sudo docker-compose rm -f nginx
           touch .env
           echo DB_ENGINE=${{ secrets.DB_ENGINE }} >> .env
