@@ -8,9 +8,7 @@ services:
       - ../backend/recipes/.env
 
   backend:
-    build: 
-      context: ../backend/recipes
-      dockerfile: Dockerfile
+    image: dinarushko/infra_backend:latest
     restart: always
     volumes:
      - static_value:/app/static/
@@ -23,9 +21,7 @@ services:
       - ../backend/recipes/.env
 
   frontend:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
+    image: dinarushko/infra_frontend:latest
     volumes:
       - ../frontend/:/app/result_build/
 
