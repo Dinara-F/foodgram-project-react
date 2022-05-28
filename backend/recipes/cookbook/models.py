@@ -131,7 +131,9 @@ class Cart(models.Model):
 class RecipeIngredient(models.Model):
     recipe = models.ForeignKey(Recipe, on_delete=models.CASCADE)
     ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE)
-    amount = models.IntegerField()
+    amount = models.PositiveSmallIntegerField(
+        default=1,
+    )
 
     def __str__(self):
         return f'{self.ingredient} in {self.recipe}'

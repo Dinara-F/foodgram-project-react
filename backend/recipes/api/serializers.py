@@ -2,6 +2,7 @@ import base64
 
 from django.shortcuts import get_object_or_404
 from django.core.files.base import ContentFile
+from django.core.validators import MinValueValidator
 
 from rest_framework import serializers
 
@@ -62,6 +63,13 @@ class IngredientsSerializer(serializers.ModelSerializer):
     name = serializers.ReadOnlyField(source='ingredient.name')
     measurement_unit = serializers.ReadOnlyField(
         source='ingredient.measurement_unit')
+    amount = serializers.IntegerField(
+        validators=(MinValueValidator(
+                1,
+                message='Количество ингредиента должно быть 1 или более.'
+            ),
+        )
+    )
 
     class Meta:
         model = RecipeIngredient
@@ -83,15 +91,28 @@ class TagSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'name', 'color', 'slug']
 
 
+class TagsField(serializers.PrimaryKeyRelatedField):
+
+    def to_representation(self, value):
+        return TagSerializer(value).data
+
+
 class WriteRecipeSerializer(serializers.ModelSerializer):
-    ingredients = IngredientsSerializer(
-        many=True, read_only=True, source='recipeingredient_set')
+    ingredients = serializers.SerializerMethodField()
     author = AuthorSerializer(read_only=True)
     is_favorited = serializers.SerializerMethodField(
         method_name='is_in_favourites', read_only=True)
     is_in_shopping_cart = serializers.SerializerMethodField(
         method_name='is_in_cart', read_only=True)
     image = Base64ImageField(max_length=None)
+    tags = TagsField(
+        queryset=Tag.objects.all(),
+        many=True
+    )
+
+    def get_ingredients(self, obj):
+        ingredients = RecipeIngredient.objects.filter(recipe=obj)
+        return IngredientsSerializer(ingredients, many=True).data
 
     def is_in_favourites(self, instance):
         user_id = self.context['request'].user.id
@@ -119,8 +140,28 @@ class WriteRecipeSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'author', 'is_favorited', 'is_in_shopping_cart', ]
 
+    def validate(self, data):
+        ingredients = self.initial_data.get('ingredients')
+        ingredient_list = []
+        for ingredient_item in ingredients:
+            ingredient = get_object_or_404(
+                Ingredient,
+                id=ingredient_item['id']
+            )
+            if ingredient in ingredient_list:
+                raise serializers.ValidationError(
+                    'Ингредиент уже добавлен'
+                )
+            ingredient_list.append(ingredient)
+            if int(ingredient_item['amount']) <= 0:
+                raise serializers.ValidationError(
+                    'Количество ингредиента должно быть 1 или более.'
+                )
+        data['ingredients'] = ingredients
+        return data
+
     def create(self, validated_data):
-        ingredients_data = self.initial_data.pop('ingredients')
+        ingredients_data = validated_data.pop('ingredients')
         tags = validated_data.pop('tags')
         recipe = Recipe.objects.create(**validated_data)
         for ingredient_data in ingredients_data:
@@ -128,17 +169,18 @@ class WriteRecipeSerializer(serializers.ModelSerializer):
                 Ingredient,
                 id=ingredient_data.get('id')
             )
+            amount = int(ingredient_data.get('amount'))
             RecipeIngredient.objects.create(
                 recipe=recipe,
                 ingredient=ingredient,
-                amount=ingredient_data.get('amount')
+                amount=amount
             )
         for tag in tags:
             recipe.tags.add(tag)
         return recipe
 
     def update(self, instance, validated_data):
-        ingredients_data = self.initial_data.pop('ingredients')
+        ingredients_data = validated_data.pop('ingredients')
         tags = validated_data.pop('tags')
         recipe = instance
         recipe.name = validated_data.get('name')
@@ -206,11 +248,11 @@ class FollowSerializer(serializers.ModelSerializer):
         return CartSerializer(recipes, many=True).data
 
     def subscription(self, instance):
-        user_id = instance.user.id
-        author_id = instance.following.id
+        user = self.context['request'].user
+        author = instance.following
         try:
             return Follow.objects.filter(
-                user=user_id, following=author_id).exists()
+                user=user, following=author).exists()
         except Exception:
             return False
 

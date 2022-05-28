@@ -169,6 +169,13 @@ class CartView(APIView):
 
 
 class FollowView(APIView):
+    def get_serializer_context(self):
+        return {
+            'request': self.request,
+            'format': self.format_kwarg,
+            'view': self
+        }
+
     def post(self, request, *args, **kwargs):
         following_id = self.kwargs.get('pk')
         following = get_object_or_404(User, id=following_id)
@@ -178,7 +185,8 @@ class FollowView(APIView):
         except Exception:
             response = {'errors': 'Подписка невозможна!'}
             return Response(response, status=status.HTTP_400_BAD_REQUEST)
-        serializer = FollowSerializer(follow)
+        serializer = FollowSerializer(
+            follow, context=self.get_serializer_context())
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def delete(self, request, *args, **kwargs):
