@@ -16,18 +16,5 @@ django-filter==21.1
 
 djangorestframework 3.12.4
 
-### Адрес сайта
-
-<http://51.250.21.86/recipes/>
-
-### Админ
-
-<http://51.250.21.86/admin/>
-
-### Админ логин и пароль
-
-admin
-admin
-
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
