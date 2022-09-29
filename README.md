@@ -14,7 +14,7 @@
 - [Docker](https://www.docker.com/)
 - [Yandex.Cloud](https://cloud.yandex.ru/)
 
-### Команда разработчиков
+## Команда разработчиков
 
 - [Динара Фатехова](https://github.com/Dinara-F) - Backend
 - [Yandex Praktikum](https://github.com/yandex-praktikum) - Frontend
