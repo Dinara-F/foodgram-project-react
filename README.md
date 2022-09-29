@@ -1,10 +1,10 @@
-# Продуктовый помощник
+# Grocery Assistant
 
-## Описание
+## Description
 
-Проект Foodgram это сайт, где можно создавать свои рецепты и смотреть чужие.
+A social network for publishing recipes, with the ability to subscribe to publications of other authors, add recipes to favorites and a shopping list. The shopping list allows you to download a list of products needed to prepare the added dishes.
 
-## Технологии
+## Technologies
 - [Python](https://www.python.org/)
 - [Django](https://www.djangoproject.com/)
 - [Django REST Framework](https://www.django-rest-framework.org/)
@@ -14,9 +14,9 @@
 - [Docker](https://www.docker.com/)
 - [Yandex.Cloud](https://cloud.yandex.ru/)
 
-## Команда разработчиков
+## Developers
 
-- [Динара Фатехова](https://github.com/Dinara-F) - Backend
+- [Dinara Fatekhova](https://github.com/Dinara-F) - Backend
 - [Yandex Praktikum](https://github.com/yandex-praktikum) - Frontend
 
 
