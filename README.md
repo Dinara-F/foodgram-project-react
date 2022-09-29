@@ -12,12 +12,12 @@
 - [Nginx](https://nginx.org/)
 - [Gunicorn](https://gunicorn.org/)
 - [Docker](https://www.docker.com/)
-- [GitHub Actions](https://docs.github.com/en/actions)
 - [Yandex.Cloud](https://cloud.yandex.ru/)
 
 ### Команда разработчиков
 
-- Динара Фатехова <https://github.com/Dinara-F> Backend
+- [Динара Фатехова](https://github.com/Dinara-F) - Backend
+- [Yandex Praktikum](https://github.com/yandex-praktikum) - Frontend
 
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
